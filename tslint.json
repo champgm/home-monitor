@@ -5,6 +5,6 @@
     "import-name": false,
     "strictNullChecks": false,
     "whitespace": false,
-    "quotemark": [true, "backtick"]
+    "quotemark": [true, "single"]
   }
 }

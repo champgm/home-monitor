@@ -1,7 +1,7 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 // import path from 'path';
-import configuration from '../configuration';
+import { configuration } from '../configuration';
 import { enumerateError } from './common/ObjectUtil';
 import { IpCheckerTask } from './task/IpChecker';
 
@@ -51,7 +51,7 @@ try {
 }
 
 console.log(`Starting tasks...`);
-const tasks: IpCheckerTask[] = [new IpCheckerTask()];
+const tasks: IpCheckerTask[] = [new IpCheckerTask(configuration)];
 tasks.forEach((task) => {
   task.start();
 });

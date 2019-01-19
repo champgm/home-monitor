@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/app.ts"
+    "start": "ts-node src/app.ts",
+    "lint": "tslint src/**/*.ts --fix"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
     "express": "^4.16.4",
     "lodash.isstring": "^4.0.1",
     "path": "^0.12.7",
+    "ping": "^0.2.2",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.2"
   },
