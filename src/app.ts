@@ -5,6 +5,13 @@ import { configuration } from '../configuration';
 import { enumerateError } from './common/ObjectUtil';
 import { IpCheckerTask } from './task/IpChecker';
 
+process.on('unhandledRejection', (error) => {
+  console.log(`Unhandled error ocurred`);
+  console.log(`${error}`);
+  console.log(`${JSON.stringify(error)}`);
+  console.log(`${JSON.stringify(enumerateError(error), null, 2)}`);
+});
+
 export function asyncHandler(handler: (request, response) => Promise<any>) {
   return async (request, response, next) => {
     try {

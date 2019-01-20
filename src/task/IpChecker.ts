@@ -2,8 +2,8 @@ import { Configuration } from 'configuration';
 import ping from 'ping';
 import Twilio from 'twilio';
 import { enumerateError } from '../common/ObjectUtil';
-import { promisify } from 'util';
-const pingSync = promisify(ping.sys.)
+// import { promisify } from 'util';
+// const pingSync = promisify(ping.sys.probe);
 
 export interface State {
   running: boolean;
@@ -11,7 +11,7 @@ export interface State {
 
 export class IpCheckerTask {
   // private static interval = 300000;
-  private static interval = 10000;
+  private static interval = 4000;
   public state: State;
   private networkDevicesToCheck: { [name: string]: string };
   private twilioClient: Twilio.Twilio;
@@ -24,39 +24,46 @@ export class IpCheckerTask {
       running: false,
     };
     this.networkDevicesToCheck = configuration.networkDevicesToCheck;
-    this.twilioClient = Twilio(
-      configuration.twilio.accountSid,
-      configuration.twilio.authToken,
-    );
+    this.twilioClient = Twilio(configuration.twilio.accountSid, configuration.twilio.authToken);
     this.contactNumbers = configuration.contactNumbers;
     this.twilioNumber = configuration.twilio.number;
     this.knownOffline = {};
   }
 
-  public start() {
+  public async start() {
     this.state.running = true;
-    Object.keys(this.networkDevicesToCheck).forEach((deviceName) => {
+    const pingPromises = Object.keys(this.networkDevicesToCheck).map(async (deviceName) => {
       const ip = this.networkDevicesToCheck[deviceName];
-      ping.sys.probe(ip, (isAlive) => {
-        if (!isAlive) {
-          if (!this.knownOffline[deviceName]) {
-            Object.values(this.contactNumbers).forEach(async (number) => {
-              await this.sendSms(deviceName, number, true);
-            });
-          } else {
-            console.log(`Network device, '${deviceName}' is still offline`);
-          }
-        } else {
-          if (this.knownOffline[deviceName]) {
-            Object.values(this.contactNumbers).forEach(async (number) => {
-              await this.sendSms(deviceName, number, false);
-            });
-          } else {
-            console.log(`Network device, '${deviceName}' is still online`);
-          }
-        }
-      });
+      const knownOffline = this.knownOffline[deviceName];
+
+      const online = await pingSync(ip);
+      const newlyOffline = !online && !knownOffline;
+      const backOnline = online && knownOffline;
+      const stillOnline = online && !knownOffline;
+      const stillOffline = !online && knownOffline;
+      if (newlyOffline) {
+        const message = `The device, '${deviceName}' has gone offline!`;
+        console.log(message);
+        const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
+          return this.sendSms(phoneNumber, message);
+        });
+        await Promise.all(smsPromises);
+        this.knownOffline[deviceName] = !online;
+      } else if (backOnline) {
+        const message = `The device, '${deviceName}' has come back online!`;
+        console.log(message);
+        const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
+          return this.sendSms(phoneNumber, message);
+        });
+        await Promise.all(smsPromises);
+        this.knownOffline[deviceName] = !online;
+      } else if (stillOnline) {
+        console.log(`Network device, '${deviceName}' is online.`);
+      } else {
+        console.log(`Network device, '${deviceName}' is still offline.`);
+      }
     });
+    await Promise.all(pingPromises);
     this.state.running = false;
     this.restart();
   }
@@ -65,28 +72,33 @@ export class IpCheckerTask {
     if (!this.state.running) {
       setTimeout(() => {
         this.start();
-      }, IpCheckerTask.interval);
+      },         IpCheckerTask.interval);
     } else {
       console.log(`IpChecker already running, will not restart`);
     }
   }
 
-  public async sendSms(deviceName: string, number: string, online: boolean) {
+  public async sendSms(number: string, message: string) {
     try {
-      const body = online
-        ? `The device, '${deviceName}' is back online!`
-        : `The device, '${deviceName}' is offline!`;
-      console.log(body);
-      console.log(`Sending SMS...`);
-      await this.twilioClient.messages.create({
-        body,
-        to: number,
-        from: this.twilioNumber,
-      });
-      this.knownOffline[deviceName] = true;
+      console.log(`Sending SMS to ${number}...`);
+      // await this.twilioClient.messages.create({
+      //   body: message,
+      //   to: number,
+      //   from: this.twilioNumber,
+      // });
     } catch (error) {
       console.log(`Error ocurred while sending Twilio SMS`);
       console.log(`${JSON.stringify(enumerateError(error), null, 2)}`);
     }
   }
+}
+
+export async function pingSync(ip: string): Promise<boolean> {
+  const promiseWrapper = (resolve) => {
+    const callback = (result: boolean) => {
+      resolve(result);
+    };
+    return ping.sys.probe(ip, callback);
+  };
+  return new Promise(promiseWrapper);
 }
