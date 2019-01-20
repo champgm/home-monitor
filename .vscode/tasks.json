@@ -1,0 +1,7 @@
+{
+  "version": "2.0.0",
+  "label": "TSCompileAll",
+  "type": "shell",
+  "command": "tsc --watch --noEmit --project .",
+  "problemMatcher": ["$tsc-watch"]
+}
