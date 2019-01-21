@@ -10,8 +10,7 @@ export interface State {
 }
 
 export class IpCheckerTask {
-  // private static interval = 300000;
-  private static interval = 4000;
+  private static interval = 300000;
   public state: State;
   private networkDevicesToCheck: { [name: string]: string };
   private twilioClient: Twilio.Twilio;
@@ -81,11 +80,11 @@ export class IpCheckerTask {
   public async sendSms(number: string, message: string) {
     try {
       console.log(`Sending SMS to ${number}...`);
-      // await this.twilioClient.messages.create({
-      //   body: message,
-      //   to: number,
-      //   from: this.twilioNumber,
-      // });
+      await this.twilioClient.messages.create({
+        body: message,
+        to: number,
+        from: this.twilioNumber,
+      });
     } catch (error) {
       console.log(`Error ocurred while sending Twilio SMS`);
       console.log(`${JSON.stringify(enumerateError(error), null, 2)}`);
