@@ -2,8 +2,7 @@ import { Configuration } from 'configuration';
 import ping from 'ping';
 import Twilio from 'twilio';
 import { enumerateError } from '../common/ObjectUtil';
-// import { promisify } from 'util';
-// const pingSync = promisify(ping.sys.probe);
+import { getTimestamp } from '../common/Time';
 
 export interface State {
   running: boolean;
@@ -41,7 +40,7 @@ export class IpCheckerTask {
       const stillOnline = online && !knownOffline;
       const stillOffline = !online && knownOffline;
       if (newlyOffline) {
-        const message = `The device, '${deviceName}' has gone offline!`;
+        const message = `${getTimestamp()} - The device, '${deviceName}' has gone offline!`;
         console.log(message);
         const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
           return this.sendSms(phoneNumber, message);
@@ -49,7 +48,7 @@ export class IpCheckerTask {
         await Promise.all(smsPromises);
         this.knownOffline[deviceName] = !online;
       } else if (backOnline) {
-        const message = `The device, '${deviceName}' has come back online!`;
+        const message = `${getTimestamp()} - The device, '${deviceName}' has come back online!`;
         console.log(message);
         const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
           return this.sendSms(phoneNumber, message);
@@ -71,7 +70,7 @@ export class IpCheckerTask {
     if (!this.state.running) {
       setTimeout(() => {
         this.start();
-      },         IpCheckerTask.interval);
+      }, IpCheckerTask.interval);
     } else {
       console.log(`IpChecker already running, will not restart`);
     }
