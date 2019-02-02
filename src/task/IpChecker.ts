@@ -9,9 +9,15 @@ export interface State {
 }
 
 export class IpCheckerTask {
-  private static interval = 300000;
+  private static interval = 30000;
   public state: State;
-  private networkDevicesToCheck: { [name: string]: string };
+  private networkDevicesToCheck: {
+    [name: string]: {
+      ip: string,
+      onlineMessage?: string,
+      offlineMessage?: string,
+    };
+  };
   private twilioClient: Twilio.Twilio;
   private contactNumbers: { [name: string]: string };
   private twilioNumber: string;
@@ -31,7 +37,7 @@ export class IpCheckerTask {
   public async start() {
     this.state.running = true;
     const pingPromises = Object.keys(this.networkDevicesToCheck).map(async (deviceName) => {
-      const ip = this.networkDevicesToCheck[deviceName];
+      const ip = this.networkDevicesToCheck[deviceName].ip;
       const knownOffline = this.knownOffline[deviceName];
 
       const online = await pingSync(ip);
@@ -40,7 +46,9 @@ export class IpCheckerTask {
       const stillOnline = online && !knownOffline;
       const stillOffline = !online && knownOffline;
       if (newlyOffline) {
-        const message = `${getTimestamp()} - The device, '${deviceName}' has gone offline!`;
+        const message = this.networkDevicesToCheck[deviceName].offlineMessage
+          ? `${getTimestamp()} - ${this.networkDevicesToCheck[deviceName].offlineMessage}`
+          : `${getTimestamp()} - The device, '${deviceName}' has gone offline!`;
         console.log(message);
         const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
           return this.sendSms(phoneNumber, message);
@@ -48,7 +56,9 @@ export class IpCheckerTask {
         await Promise.all(smsPromises);
         this.knownOffline[deviceName] = !online;
       } else if (backOnline) {
-        const message = `${getTimestamp()} - The device, '${deviceName}' has come back online!`;
+        const message = this.networkDevicesToCheck[deviceName].onlineMessage
+          ? `${getTimestamp()} - ${this.networkDevicesToCheck[deviceName].onlineMessage}`
+          : `${getTimestamp()} - The device, '${deviceName}' has come back online!`;
         console.log(message);
         const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
           return this.sendSms(phoneNumber, message);
@@ -56,9 +66,9 @@ export class IpCheckerTask {
         await Promise.all(smsPromises);
         this.knownOffline[deviceName] = !online;
       } else if (stillOnline) {
-        console.log(`Network device, '${deviceName}' is online.`);
+        console.log(`${getTimestamp()} - Network device, '${deviceName}' is online.`);
       } else {
-        console.log(`Network device, '${deviceName}' is still offline.`);
+        console.log(`${getTimestamp()} - Network device, '${deviceName}' is still offline.`);
       }
     });
     await Promise.all(pingPromises);
@@ -70,7 +80,7 @@ export class IpCheckerTask {
     if (!this.state.running) {
       setTimeout(() => {
         this.start();
-      }, IpCheckerTask.interval);
+      },         IpCheckerTask.interval);
     } else {
       console.log(`IpChecker already running, will not restart`);
     }
