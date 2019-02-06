@@ -8,8 +8,14 @@ export interface State {
   running: boolean;
 }
 
+export interface DeviceStatus {
+  timesOffline: number;
+  alreadyAlerted: boolean;
+}
+
 export class IpCheckerTask {
   private static interval = 30000;
+  private static offlineThreshold = 4;
   public state: State;
   private networkDevicesToCheck: {
     [name: string]: {
@@ -21,7 +27,7 @@ export class IpCheckerTask {
   private twilioClient: Twilio.Twilio;
   private contactNumbers: { [name: string]: string };
   private twilioNumber: string;
-  private knownOffline: { [name: string]: boolean };
+  private deviceStatus: { [name: string]: DeviceStatus };
 
   constructor(configuration: Configuration) {
     this.state = {
@@ -31,31 +37,58 @@ export class IpCheckerTask {
     this.twilioClient = Twilio(configuration.twilio.accountSid, configuration.twilio.authToken);
     this.contactNumbers = configuration.contactNumbers;
     this.twilioNumber = configuration.twilio.number;
-    this.knownOffline = {};
+    this.deviceStatus = {};
+  }
+
+  private getStatus(deviceName: string, online: boolean) {
+    if (!this.deviceStatus[deviceName]) {
+      this.deviceStatus[deviceName] = {
+        timesOffline: 0,
+        alreadyAlerted: false,
+      };
+    }
+    if (online) {
+      this.deviceStatus[deviceName].timesOffline = 0;
+    } else {
+      this.deviceStatus[deviceName].timesOffline += 1;
+    }
+    return this.deviceStatus[deviceName];
+  }
+
+  private offlineTooLong(deviceStatus: DeviceStatus): boolean {
+    return deviceStatus.timesOffline > IpCheckerTask.offlineThreshold;
+  }
+
+  private getOfflineMinutes(deviceStatus: DeviceStatus) {
+    const offlineMultiplier = deviceStatus.timesOffline;
+    const milliseconds = offlineMultiplier * IpCheckerTask.interval;
+    return milliseconds / 60000;
   }
 
   public async start() {
     this.state.running = true;
     const pingPromises = Object.keys(this.networkDevicesToCheck).map(async (deviceName) => {
       const ip = this.networkDevicesToCheck[deviceName].ip;
-      const knownOffline = this.knownOffline[deviceName];
 
       const online = await pingSync(ip);
-      const newlyOffline = !online && !knownOffline;
-      const backOnline = online && knownOffline;
-      const stillOnline = online && !knownOffline;
-      const stillOffline = !online && knownOffline;
-      if (newlyOffline) {
+      const deviceStatus = this.getStatus(deviceName, online);
+
+      const alreadyAlerted = deviceStatus.alreadyAlerted;
+      const offlineTooLong = this.offlineTooLong(deviceStatus);
+
+      if (offlineTooLong && !alreadyAlerted) {
         const message = this.networkDevicesToCheck[deviceName].offlineMessage
-          ? `${getTimestamp()} - ${this.networkDevicesToCheck[deviceName].offlineMessage}`
-          : `${getTimestamp()} - The device, '${deviceName}' has gone offline!`;
+          ? `${getTimestamp()} - ${this.networkDevicesToCheck[deviceName].offlineMessage} ` +
+          `${this.getOfflineMinutes(deviceStatus)} minutes ago`
+          : `${getTimestamp()} - The device, '${deviceName}' has been offline for` +
+          ` ${this.getOfflineMinutes(deviceStatus)} minutes!`;
         console.log(message);
         const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
           return this.sendSms(phoneNumber, message);
         });
         await Promise.all(smsPromises);
-        this.knownOffline[deviceName] = !online;
-      } else if (backOnline) {
+        deviceStatus.alreadyAlerted = true;
+      } else if (online && alreadyAlerted) {
         const message = this.networkDevicesToCheck[deviceName].onlineMessage
           ? `${getTimestamp()} - ${this.networkDevicesToCheck[deviceName].onlineMessage}`
           : `${getTimestamp()} - The device, '${deviceName}' has come back online!`;
@@ -64,12 +97,13 @@ export class IpCheckerTask {
           return this.sendSms(phoneNumber, message);
         });
         await Promise.all(smsPromises);
-        this.knownOffline[deviceName] = !online;
-      } else if (stillOnline) {
+        deviceStatus.alreadyAlerted = false;
+      } else if (online) {
         console.log(`${getTimestamp()} - Network device, '${deviceName}' is online.`);
       } else {
-        console.log(`${getTimestamp()} - Network device, '${deviceName}' is still offline.`);
+        console.log(`${getTimestamp()} - Network device, '${deviceName}' is offline.`);
       }
+      this.deviceStatus[deviceName] = deviceStatus;
     });
     await Promise.all(pingPromises);
     this.state.running = false;
