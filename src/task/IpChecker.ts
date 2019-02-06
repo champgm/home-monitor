@@ -1,8 +1,8 @@
-import { Configuration } from 'configuration';
 import ping from 'ping';
 import Twilio from 'twilio';
 import { enumerateError } from '../common/ObjectUtil';
 import { getTimestamp } from '../common/Time';
+import { Configuration } from '../../configuration';
 
 export interface State {
   running: boolean;
