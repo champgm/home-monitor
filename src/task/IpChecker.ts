@@ -3,6 +3,7 @@ import Twilio from 'twilio';
 import { enumerateError } from '../common/ObjectUtil';
 import { getTimestamp } from '../common/Time';
 import { Configuration } from '../../configuration';
+import Task from './Task';
 
 export interface State {
   running: boolean;
@@ -13,7 +14,7 @@ export interface DeviceStatus {
   alreadyAlerted: boolean;
 }
 
-export class IpCheckerTask {
+export class IpCheckerTask extends Task{
   private static interval = 30000;
   private static offlineThreshold = 4;
   public state: State;
@@ -30,6 +31,7 @@ export class IpCheckerTask {
   private deviceStatus: { [name: string]: DeviceStatus };
 
   constructor(configuration: Configuration) {
+    super();
     this.state = {
       running: false,
     };
@@ -70,7 +72,7 @@ export class IpCheckerTask {
     const pingPromises = Object.keys(this.networkDevicesToCheck).map(async (deviceName) => {
       const ip = this.networkDevicesToCheck[deviceName].ip;
 
-      const online = await pingSync(ip);
+      const online = await ping.promise.probe(ip).alive;
       const deviceStatus = this.getStatus(deviceName, online);
 
       const alreadyAlerted = deviceStatus.alreadyAlerted;
@@ -133,14 +135,4 @@ export class IpCheckerTask {
       console.log(`${JSON.stringify(enumerateError(error), null, 2)}`);
     }
   }
-}
-
-export async function pingSync(ip: string): Promise<boolean> {
-  const promiseWrapper = (resolve) => {
-    const callback = (result: boolean) => {
-      resolve(result);
-    };
-    return ping.sys.probe(ip, callback);
-  };
-  return new Promise(promiseWrapper);
 }

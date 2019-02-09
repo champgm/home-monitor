@@ -4,6 +4,8 @@ import express from 'express';
 import { configuration } from '../configuration';
 import { enumerateError } from './common/ObjectUtil';
 import { IpCheckerTask } from './task/IpChecker';
+import { PingCheckerTask } from './task/PingChecker';
+import Task from './task/Task';
 
 process.on('unhandledRejection', (error) => {
   console.log(`Unhandled error ocurred`);
@@ -58,7 +60,10 @@ try {
 }
 
 console.log(`Starting tasks...`);
-const tasks: IpCheckerTask[] = [new IpCheckerTask(configuration)];
+const tasks: Task[] = [
+  new IpCheckerTask(configuration),
+  new PingCheckerTask(configuration),
+];
 tasks.forEach((task) => {
   task.start();
 });
