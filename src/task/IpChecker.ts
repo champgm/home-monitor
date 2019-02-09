@@ -14,7 +14,7 @@ export interface DeviceStatus {
   alreadyAlerted: boolean;
 }
 
-export class IpCheckerTask extends Task{
+export class IpCheckerTask extends Task {
   private static interval = 30000;
   private static offlineThreshold = 4;
   public state: State;
@@ -72,7 +72,8 @@ export class IpCheckerTask extends Task{
     const pingPromises = Object.keys(this.networkDevicesToCheck).map(async (deviceName) => {
       const ip = this.networkDevicesToCheck[deviceName].ip;
 
-      const online = await ping.promise.probe(ip).alive;
+      const probeResult = await ping.promise.probe(ip);
+      const online = probeResult.alive;
       const deviceStatus = this.getStatus(deviceName, online);
 
       const alreadyAlerted = deviceStatus.alreadyAlerted;
