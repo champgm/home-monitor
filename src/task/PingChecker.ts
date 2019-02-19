@@ -43,13 +43,19 @@ export class PingCheckerTask extends Task {
           return;
         }
       }));
-    const responses = rawResponses.filter((response)=>{
-      return response !==undefined;
+    const responses = rawResponses.filter((response) => {
+      return response !== undefined;
     });
 
     console.log(`Submitting ping data...`);
     const metricDataInput = this.buildMetricData(responses);
-    await this.cloudWatch.putMetricData(metricDataInput).promise();
+    try {
+      await this.cloudWatch.putMetricData(metricDataInput).promise();
+    } catch (error) {
+      console.log(`Failed to send cloudwatch metrics.`);
+      console.log(`Error: ${error}`);
+      console.log(`Error: ${JSON.stringify(error, null, 2)}`);
+    }
 
     this.state.running = false;
     this.restart();
