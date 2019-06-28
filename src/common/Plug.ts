@@ -31,7 +31,7 @@ export async function setPlugState(ip: string, state: IPlugState) {
 export async function getPlugState(ip: string): Promise<{ on: true }> {
   const getUrl = `${configuration.plugsEndpoint}/${ip}/state`;
   try {
-    const getResult = await requestPromise.get(getUrl);
+    const getResult = JSON.parse(await requestPromise.get(getUrl));
     const state = getResult.payload;
     console.log(`Plug at ip, '${ip}' currently has state, '${JSON.stringify(state)}'`);
     return state;

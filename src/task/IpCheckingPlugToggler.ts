@@ -42,16 +42,16 @@ export class IpCheckingPlugToggler extends Task {
       const probeResult = await ping.promise.probe(ipToPing);
       const addressReachable = probeResult.alive;
 
-      const currentStatus = await this.getStatus(ipToPing, plugIp, addressReachable);
-      const plugOff = currentStatus.plugOff;
-      const offlineTooLong = currentStatus.offlineTooLong;
-      const recoveryTooLong = currentStatus.recoveryTooLong;
-
       if (addressReachable) {
         console.log(`${getTimestamp()} - I am able to reach ${ipToPing}`);
       } else {
         console.log(`${getTimestamp()} - I am unable to reach ${ipToPing}!`);
       }
+
+      const currentStatus = await this.getStatus(ipToPing, plugIp, addressReachable);
+      const plugOff = currentStatus.plugOff;
+      const offlineTooLong = currentStatus.offlineTooLong;
+      const recoveryTooLong = currentStatus.recoveryTooLong;
 
       if (offlineTooLong && !plugOff) {
         await setPlugState(plugIp, PLUG_OFF);
