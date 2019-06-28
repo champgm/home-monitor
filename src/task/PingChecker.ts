@@ -1,12 +1,10 @@
-import ping from 'ping';
-import Twilio from 'twilio';
 import AWS from 'aws-sdk';
-import clone from 'lodash.clonedeep';
+import ping from 'ping';
 
 import { Configuration } from '../../configuration';
 import { PingResponse } from '../common/interface/Ping';
-import Task from './Task';
 import { enumerateError } from '../common/ObjectUtil';
+import Task from './Task';
 
 export interface State {
   running: boolean;
@@ -72,7 +70,6 @@ export class PingCheckerTask extends Task {
   private buildMetricData(responses: PingResponse[]) {
     const datums: AWS.CloudWatch.MetricDatum[] = responses.map((response) => {
       return {
-        MetricName: 'Response Time',
         Dimensions: [
           {
             Name: 'Hostname',
@@ -82,13 +79,14 @@ export class PingCheckerTask extends Task {
             Value: response.numeric_host,
           },
         ],
+        MetricName: 'Response Time',
         Unit: 'Milliseconds',
         Value: response.time,
       };
     });
     const dataInput: AWS.CloudWatch.PutMetricDataInput = {
-      Namespace: 'home-monitor-ping',
       MetricData: datums,
+      Namespace: 'home-monitor-ping',
     };
     return dataInput;
   }
