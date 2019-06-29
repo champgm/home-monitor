@@ -42,25 +42,42 @@ export class IpCheckingPlugToggler extends Task {
       const probeResult = await ping.promise.probe(ipToPing);
       const addressReachable = probeResult.alive;
 
-      if (addressReachable) {
-        console.log(`${getTimestamp()} - I am able to reach ${ipToPing}`);
-      } else {
-        console.log(`${getTimestamp()} - I am unable to reach ${ipToPing}!`);
-      }
-
       const currentStatus = await this.getStatus(ipToPing, plugIp, addressReachable);
       const plugOff = currentStatus.plugOff;
       const offlineTooLong = currentStatus.offlineTooLong;
       const recoveryTooLong = currentStatus.recoveryTooLong;
 
-      if (offlineTooLong && !plugOff) {
-        await setPlugState(plugIp, PLUG_OFF);
-      } else if (offlineTooLong && plugOff) {
-        await setPlugState(plugIp, PLUG_ON);
-        currentStatus.inRecovery = true;
-      } else if (recoveryTooLong) {
-        await setPlugState(plugIp, PLUG_OFF);
-        currentStatus.inRecovery = false;
+      if (addressReachable) {
+        console.log(`${getTimestamp()} - I am able to reach ${ipToPing}`);
+      } else {
+        console.log(`${getTimestamp()} - I have been unable to reach '${ipToPing}' ` +
+          `for ${this.getOfflineMinutes(currentStatus)} minutes!`);
+      }
+
+      // console.log(`${getTimestamp()} - Current Status: ${JSON.stringify(currentStatus, null, 2)}`);
+
+      if (!currentStatus.inRecovery) {
+        if (offlineTooLong && !plugOff && !currentStatus.inRecovery) {
+          // console.log(`${getTimestamp()} - Plug status: ${JSON.stringify(currentStatus, null, 2)}`);
+          console.log(`${getTimestamp()} - Connectivity has been down too long, turning plug off`);
+          await setPlugState(plugIp, PLUG_OFF);
+        } else if (offlineTooLong && plugOff && !currentStatus.inRecovery) {
+          // console.log(`${getTimestamp()} - Plug status: ${JSON.stringify(currentStatus, null, 2)}`);
+          console.log(`${getTimestamp()} - Turning plug on`);
+          await setPlugState(plugIp, PLUG_ON);
+          currentStatus.inRecovery = true;
+        }
+      } else {
+        console.log(`${getTimestamp()} - Connectivity has been in recovery for ` +
+          `${this.getRecoveryMinutes(currentStatus)}`);
+        // console.log(`${getTimestamp()} - Plug status: ${JSON.stringify(currentStatus, null, 2)}`);
+        if (!recoveryTooLong) {
+          console.log(`${getTimestamp()} - Plug is in recovery, waiting for connectivity...`);
+        } else {
+          console.log(`${getTimestamp()} - Connectivity recovery is taking too long, turning plug off`);
+          await setPlugState(plugIp, PLUG_OFF);
+          currentStatus.inRecovery = false;
+        }
       }
       this.currentStatus[ipToPing] = currentStatus;
     });
@@ -76,16 +93,16 @@ export class IpCheckingPlugToggler extends Task {
         IpCheckingPlugToggler.interval,
       );
     } else {
-      console.log(`IpChecker already running, will not restart`);
+      console.log(`${getTimestamp()} - IpCheckingPlugToggler already running, will not restart`);
     }
   }
 
   private async getStatus(ipToPing: string, plugIp: string, online: boolean) {
     if (!this.currentStatus[ipToPing]) {
       this.currentStatus[ipToPing] = {
-        plugOff: false,
         inRecovery: false,
         offlineTooLong: false,
+        plugOff: false,
         recoveryTooLong: false,
         timesSeenInRecovery: 0,
         timesSeenOffline: 0,
@@ -95,11 +112,8 @@ export class IpCheckingPlugToggler extends Task {
     const plugIsOff = !(await getPlugState(plugIp)).on;
     this.currentStatus[ipToPing].plugOff = plugIsOff;
 
-    if (plugIsOff && online) {
-      throw new Error('Invalid state detected, plug is off but host is reachable');
-    }
-
     if (online) {
+      await setPlugState(plugIp, PLUG_ON);
       this.currentStatus[ipToPing].inRecovery = false;
       this.currentStatus[ipToPing].offlineTooLong = false;
       this.currentStatus[ipToPing].recoveryTooLong = false;
@@ -121,9 +135,15 @@ export class IpCheckingPlugToggler extends Task {
     return this.currentStatus[ipToPing];
   }
 
-  private getOfflineMinutes(deviceStatus: IpStatus) {
-    const offlineMultiplier = deviceStatus.timesSeenOffline;
-    const milliseconds = offlineMultiplier * IpCheckingPlugToggler.interval;
+  private getOfflineMinutes(currentStatus: IpStatus) {
+    const multiplier = currentStatus.timesSeenOffline;
+    const milliseconds = multiplier * IpCheckingPlugToggler.interval;
+    return milliseconds / 60000;
+  }
+
+  private getRecoveryMinutes(currentStatus: IpStatus) {
+    const multiplier = currentStatus.timesSeenInRecovery;
+    const milliseconds = multiplier * IpCheckingPlugToggler.interval;
     return milliseconds / 60000;
   }
 }

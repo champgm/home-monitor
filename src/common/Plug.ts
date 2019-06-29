@@ -1,6 +1,7 @@
 import requestPromise from 'request-promise-native';
 
 import { configuration } from '../../configuration';
+import { getTimestamp } from './Time';
 
 export interface IPlugState {
   body: { on: boolean };
@@ -21,9 +22,9 @@ export async function setPlugState(ip: string, state: IPlugState) {
   const putUrl = `${configuration.plugsEndpoint}/${ip}/state`;
   try {
     const putResult = await requestPromise.put(putUrl, state);
-    console.log(`Plug at ip, '${ip}' has been set to state, '${JSON.stringify(state)}'`);
+    // console.log(`${getTimestamp()} - Plug at ip, '${ip}' has been set to state, '${JSON.stringify(state.body)}'`);
   } catch (error) {
-    console.log(`An error ocurred while accessing the endpoint, '${putUrl}'.`);
+    console.log(`${getTimestamp()} - An error ocurred while accessing the endpoint, '${putUrl}'.`);
     console.log(JSON.stringify(error, null, 2));
   }
 }
@@ -33,10 +34,10 @@ export async function getPlugState(ip: string): Promise<{ on: true }> {
   try {
     const getResult = JSON.parse(await requestPromise.get(getUrl));
     const state = getResult.payload;
-    console.log(`Plug at ip, '${ip}' currently has state, '${JSON.stringify(state)}'`);
+    // console.log(`${getTimestamp()} - Plug at ip, '${ip}' currently has state, '${JSON.stringify(state)}'`);
     return state;
   } catch (error) {
-    console.log(`An error ocurred while accessing the endpoint, '${getUrl}'.`);
+    console.log(`${getTimestamp()} - An error ocurred while accessing the endpoint, '${getUrl}'.`);
     console.log(JSON.stringify(error, null, 2));
   }
 }
@@ -46,7 +47,7 @@ export async function setPlugStates(ips: string[], state: IPlugState) {
     try {
       setPlugState(ip, state);
     } catch (error) {
-      console.log(`Error ocurred while setting plug state:`);
+      console.log(`${getTimestamp()} - Error ocurred while setting plug state:`);
       console.log(JSON.stringify(error, null, 2));
     }
   }
