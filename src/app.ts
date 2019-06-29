@@ -6,6 +6,7 @@ import { enumerateError } from './common/ObjectUtil';
 import { IpCheckerTask } from './task/IpChecker';
 import { PingCheckerTask } from './task/PingChecker';
 import Task from './task/Task';
+import { IpCheckingPlugToggler } from './task/IpCheckingPlugToggler';
 
 process.on('unhandledRejection', (error) => {
   console.log(`Unhandled error ocurred`);
@@ -63,6 +64,7 @@ console.log(`Starting tasks...`);
 const tasks: Task[] = [
   new IpCheckerTask(configuration),
   new PingCheckerTask(configuration),
+  new IpCheckingPlugToggler(configuration),
 ];
 tasks.forEach((task) => {
   task.start();

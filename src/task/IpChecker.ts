@@ -1,8 +1,8 @@
 import ping from 'ping';
 import Twilio from 'twilio';
+import { Configuration } from '../../configuration';
 import { enumerateError } from '../common/ObjectUtil';
 import { getTimestamp } from '../common/Time';
-import { Configuration } from '../../configuration';
 import Task from './Task';
 
 export interface State {
@@ -40,31 +40,6 @@ export class IpCheckerTask extends Task {
     this.contactNumbers = configuration.contactNumbers;
     this.twilioNumber = configuration.twilio.number;
     this.deviceStatus = {};
-  }
-
-  private getStatus(deviceName: string, online: boolean) {
-    if (!this.deviceStatus[deviceName]) {
-      this.deviceStatus[deviceName] = {
-        timesOffline: 0,
-        alreadyAlerted: false,
-      };
-    }
-    if (online) {
-      this.deviceStatus[deviceName].timesOffline = 0;
-    } else {
-      this.deviceStatus[deviceName].timesOffline += 1;
-    }
-    return this.deviceStatus[deviceName];
-  }
-
-  private offlineTooLong(deviceStatus: DeviceStatus): boolean {
-    return deviceStatus.timesOffline > IpCheckerTask.offlineThreshold;
-  }
-
-  private getOfflineMinutes(deviceStatus: DeviceStatus) {
-    const offlineMultiplier = deviceStatus.timesOffline;
-    const milliseconds = offlineMultiplier * IpCheckerTask.interval;
-    return milliseconds / 60000;
   }
 
   public async start() {
@@ -128,12 +103,37 @@ export class IpCheckerTask extends Task {
       console.log(`Sending SMS to ${number}...`);
       await this.twilioClient.messages.create({
         body: message,
-        to: number,
         from: this.twilioNumber,
+        to: number,
       });
     } catch (error) {
       console.log(`Error ocurred while sending Twilio SMS`);
       console.log(`${JSON.stringify(enumerateError(error), null, 2)}`);
     }
+  }
+
+  private getStatus(deviceName: string, online: boolean) {
+    if (!this.deviceStatus[deviceName]) {
+      this.deviceStatus[deviceName] = {
+        alreadyAlerted: false,
+        timesOffline: 0,
+      };
+    }
+    if (online) {
+      this.deviceStatus[deviceName].timesOffline = 0;
+    } else {
+      this.deviceStatus[deviceName].timesOffline += 1;
+    }
+    return this.deviceStatus[deviceName];
+  }
+
+  private offlineTooLong(deviceStatus: DeviceStatus): boolean {
+    return deviceStatus.timesOffline > IpCheckerTask.offlineThreshold;
+  }
+
+  private getOfflineMinutes(deviceStatus: DeviceStatus) {
+    const offlineMultiplier = deviceStatus.timesOffline;
+    const milliseconds = offlineMultiplier * IpCheckerTask.interval;
+    return milliseconds / 60000;
   }
 }
