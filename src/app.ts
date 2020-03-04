@@ -62,7 +62,7 @@ try {
 
 console.log(`Starting tasks...`);
 const tasks: Task[] = [
-  // new IpCheckerTask(configuration),
+  new IpCheckerTask(configuration),
   // new PingCheckerTask(configuration),
   new IpCheckingPlugToggler(configuration),
 ];
