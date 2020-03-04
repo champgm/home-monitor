@@ -29,7 +29,7 @@ export async function setPlugState(ip: string, state: IPlugState) {
   }
 }
 
-export async function getPlugState(ip: string): Promise<{ on: true }> {
+export async function getPlugState(ip: string): Promise<{ on: boolean }> {
   const getUrl = `${configuration.plugsEndpoint}/${ip}/state`;
   try {
     const getResult = JSON.parse(await requestPromise.get(getUrl));
@@ -39,6 +39,7 @@ export async function getPlugState(ip: string): Promise<{ on: true }> {
   } catch (error) {
     console.log(`${getTimestamp()} - An error ocurred while accessing the endpoint, '${getUrl}'.`);
     console.log(JSON.stringify(error, null, 2));
+    return { on: true };
   }
 }
 
