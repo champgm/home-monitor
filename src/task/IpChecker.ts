@@ -4,6 +4,7 @@ import { Configuration } from '../../configuration';
 import { enumerateError } from '../common/ObjectUtil';
 import { getTimestamp } from '../common/Time';
 import Task from './Task';
+import { Smser } from '../common/Smser';
 
 export interface State {
   running: boolean;
@@ -30,7 +31,7 @@ export class IpCheckerTask extends Task {
   private twilioNumber: string;
   private deviceStatus: { [name: string]: DeviceStatus };
 
-  constructor(configuration: Configuration) {
+  constructor(configuration: Configuration, private smser:Smser) {
     super();
     this.state = {
       running: false,
@@ -62,7 +63,7 @@ export class IpCheckerTask extends Task {
           ` ${this.getOfflineMinutes(deviceStatus)} minutes!`;
         console.log(message);
         const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
-          return this.sendSms(phoneNumber, message);
+          return this.smser.sendSms(phoneNumber, message);
         });
         await Promise.all(smsPromises);
         deviceStatus.alreadyAlerted = true;
@@ -72,7 +73,7 @@ export class IpCheckerTask extends Task {
           : `${getTimestamp()} - The device, '${deviceName}' has come back online!`;
         console.log(message);
         const smsPromises = Object.values(this.contactNumbers).map((phoneNumber) => {
-          return this.sendSms(phoneNumber, message);
+          return this.smser.sendSms(phoneNumber, message);
         });
         await Promise.all(smsPromises);
         deviceStatus.alreadyAlerted = false;
@@ -95,20 +96,6 @@ export class IpCheckerTask extends Task {
       },         IpCheckerTask.interval);
     } else {
       console.log(`IpChecker already running, will not restart`);
-    }
-  }
-
-  public async sendSms(number: string, message: string) {
-    try {
-      console.log(`Sending SMS to ${number}...`);
-      await this.twilioClient.messages.create({
-        body: message,
-        from: this.twilioNumber,
-        to: number,
-      });
-    } catch (error) {
-      console.log(`Error ocurred while sending Twilio SMS`);
-      console.log(`${JSON.stringify(enumerateError(error), null, 2)}`);
     }
   }
 

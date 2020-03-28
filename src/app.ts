@@ -5,8 +5,11 @@ import { configuration } from '../configuration';
 import { enumerateError } from './common/ObjectUtil';
 import { IpCheckerTask } from './task/IpChecker';
 import { IpCheckingPlugToggler } from './task/IpCheckingPlugToggler';
+import { PageCheckerTask } from './task/PageChecker';
 import { PingCheckerTask } from './task/PingChecker';
 import Task from './task/Task';
+import { Smser } from './common/Smser';
+import AWS from 'aws-sdk';
 
 process.on('unhandledRejection', (error) => {
   console.log(`Unhandled error ocurred`);
@@ -62,9 +65,10 @@ try {
 
 console.log(`Starting tasks...`);
 const tasks: Task[] = [
-  new IpCheckerTask(configuration),
+  new IpCheckerTask(configuration, new Smser(configuration)),
   // new PingCheckerTask(configuration),
-  new IpCheckingPlugToggler(configuration),
+  // new IpCheckingPlugToggler(configuration),
+  new PageCheckerTask(configuration, new Smser(configuration), new AWS.S3(), new AWS.Textract({region:configuration.defaultRegion})),
 ];
 tasks.forEach((task) => {
   task.start();
