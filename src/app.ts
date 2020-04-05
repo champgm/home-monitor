@@ -68,7 +68,7 @@ const tasks: Task[] = [
   new IpCheckerTask(configuration, new Smser(configuration)),
   // new PingCheckerTask(configuration),
   // new IpCheckingPlugToggler(configuration),
-  new PageCheckerTask(configuration, new Smser(configuration), new AWS.S3(), new AWS.Textract({region:configuration.defaultRegion})),
+  // new PageCheckerTask(configuration, new Smser(configuration), new AWS.S3(), new AWS.Textract({region:configuration.defaultRegion})),
 ];
 tasks.forEach((task) => {
   task.start();
