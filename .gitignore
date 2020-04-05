@@ -1,2 +1,8 @@
 node_modules
 configuration.ts
+
+src/task/hashes/*.txt
+src/task/screenshots/*.png
+src/task/screenshots/*.txt
+
+.vscode
