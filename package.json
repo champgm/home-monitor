@@ -22,7 +22,7 @@
     "express": "^4.17.1",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isstring": "^4.0.1",
-    "moment": "^2.24.0",
+    "moment": "^2.29.2",
     "path": "^0.12.7",
     "ping": "^0.2.2",
     "pixelmatch": "^5.1.0",
